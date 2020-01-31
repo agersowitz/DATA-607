@@ -1,0 +1,47 @@
+---
+title: "DATA 607 - Week 1 Assignment"
+author: "Adam Gersowitz"
+date: "1/31/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+## Overview
+
+The article to be analyzed in this file is a file on the fight songs of colleges and universities across the US. This includes characteristics such as the school, writers and attributes about the song.
+
+# Link
+
+https://projects.fivethirtyeight.com/college-fight-song-lyrics/
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message = FALSE, warning = FALSE}
+library (readr)
+library(RCurl)
+
+
+x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/fight-songs.csv")
+fightsongs <- read.csv(text=x)
+#print(fightsongs)
+
+
+rawfsdf <- data.frame(fightsongs)
+fightsongdf = rawfsdf[c("school","song_name","year","writers"
+                        ,"student_writer","official_song","bpm","sec_duration","fight"
+                        ,"number_fights","victory","win_won"
+                        ,"victory_win_won","rah","nonsense","colors"
+                        ,"men","opponents","spelling","trope_count"
+                        )]
+print(fightsongdf)
+
+```
+
+
+## Conclusions
+
+The original article that analyzed this fightsong data correlated duration and beats per minute to create a matrix that ranged from songs that ranged from Fast and Short, Fast but Long, Slow but Short, Slow and Long. They also aggregate the "cliches" in each teams fight song which is pulled from the trope_count in the raw dataset. To expand on this dataset you could determine which factors such as age, student_writer and various cliches are correlated with song length and beats per minute. You could also determine if songs that were not official songs had similar characteristics. Additionally, if you could examine the popularity of fight songs through surveys of the students at each university and correlate their responses with attributes of the songs themselves.
+
