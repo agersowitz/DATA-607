@@ -1,0 +1,63 @@
+---
+title: "DATA 607 - Week 1 Assignment"
+author: "Adam Gersowitz"
+date: "2/8/2020"
+output: html_document
+---
+## Overview
+
+This is a basic example of connecting to a mysql database through R and then moving tables form that database into an R dataframe.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message = FALSE, warning = FALSE}
+
+#install.packages('RMySQL')
+#install.packages("RODBC")
+
+
+library(RMySQL)
+library(DBI)
+library(dplyr)
+library(dbplyr)
+library(keyring)
+
+#keyring::key_set(service = "my-database", 
+#                 username = "mypassword")
+
+#keyring::key_set(service = "my-database", 
+#                 username = "myusername")
+#dbDisconnect(con)
+con <- dbConnect(RMySQL::MySQL(), 
+                 user = keyring::key_get("my-database", "myusername"),
+                 password=keyring::key_get("my-database", "mypassword"),
+                 dbname = "flights")
+
+#dbListTables(con)
+
+final_dataset <- dbGetQuery(con,"
+select reviews.review_id, reviews.rating, reviews.review, movies.*, people.*
+from reviews join movies on movies.movie_id = reviews.movie_id 
+join people on people.person_id = reviews.person_id
+order by reviews.movie_id, reviews.person_id
+")
+
+reviews_df <- dbGetQuery(con,"select * from reviews order by review_id")
+people_df <- dbGetQuery(con,"select * from people order by person_id")
+movies_df <- dbGetQuery(con,"select * from movies order by movie_id")
+
+write.csv(final_dataset,"C:/Users/gerso/Documents/DATA 607/Assignment 2/assignment 2 final dataset.csv", row.names = FALSE)
+dbDisconnect(con)
+```
+
+## Conclusions
+
+I broke this assignment out into 3 tables in my sql database. In my model the reviews table would only be populated when a review was made. This would help with data issues that would arise due to incomplete data, such as not every person has seen every movie. I would then reference the discriptor information of movies and people by joining the reviews table with a person_id or movie_id.
+
+
+
+
+
