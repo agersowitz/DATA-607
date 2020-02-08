@@ -1,0 +1,123 @@
+---
+title: "DATA 697 - Week 3 assignment"
+author: "Adam Gersowitz"
+date: "2/8/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Overview
+
+Week 3 assignment will be working with various data sets to practice Data manipulation and processing
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1 
+
+Using the 173 majors listed in fivethirtyeight.com’s College Majors dataset [https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/], provide code that identifies the majors that contain either "DATA" or "STATISTICS"
+
+```{r message = FALSE, warning = FALSE}
+library (readr)
+library(RCurl)
+
+
+x <- getURL("https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv")
+majors <- read.csv(text=x)
+#print(fightsongs)
+#head(majors)
+
+majorssdf <- data.frame(majors)
+data_stats_majors <- subset(majorssdf, grepl("DATA", Major) | grepl("STATISTICS", Major))
+
+data_stats_majors
+
+```
+## Question 2
+
+Write code that transforms the data below:
+
+[1] "bell pepper"  "bilberry"     "blackberry"   "blood orange"
+
+[5] "blueberry"    "cantaloupe"   "chili pepper" "cloudberry"  
+
+[9] "elderberry"   "lime"         "lychee"       "mulberry"    
+
+[13] "olive"        "salal berry"
+
+Into a format like this:
+
+c("bell pepper", "bilberry", "blackberry", "blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry")
+
+```{r message = FALSE, warning = FALSE}
+library(tidyverse)
+list1 = c("bell pepper", "bilberry", "blackberry","blood orange")
+list2 = c("blueberry","cantalope","chili pepper","cloudberry")
+list3 = c("elderberry","lime","lychee","mulberry")
+list4 = c("olive","salal berry")
+
+final<-c(list1,list2,list3,list4)
+final
+
+x <- c("apple pie", "apple", "apple cake")
+
+```
+
+## Question 3
+
+Describe, in words, what these expressions will match:
+
+(.)\1\1
+
+This will match any strings that have a character that repeats back to back
+
+"(.)(.)\\2\\1"
+
+This will match any strings that have a symetrical set of 4 characters, such that position 1 and 4 match while positions 2 and 4 match (ex: otto)
+
+(..)\1
+
+This will match any strings that have a repeated pair of letters
+
+"(.).\\1.\\1"
+
+This will match any string that has the same character repeat 3 times and they are all seperated by one character.
+(ex: banana, papaya, x7xyx)
+
+"(.)(.)(.).*\\3\\2\\1"
+
+Similar to number 2 this will match any string that has a symetrical set of 6 characters. However this one will match is the first 3 characters are seperated from the last 3 characters. (ex:abccba, 123klsjd321) 
+
+
+
+## Question 4
+
+Construct regular expressions to match words that:
+
+Start and end with the same character.
+
+"^(.).*\\1$"
+
+
+Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+
+"(.)(.).*\\1\\2"
+
+
+Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+
+"(.).*\\1.*\\1"
+
+```{r message = FALSE, warning = FALSE}
+fruit <-c("banana","coconut","cucumber","jujubee","papaya","salal berry","elleven")
+
+#str_view(fruit, "(.).*\\1.*\\1", match = TRUE)
+#(.)\1\1
+#"(.)(.)\\2\\1"
+#(..)\1
+#"(.).\\1.\\1"
+#"(.)(.)(.).*\\3\\2\\1"
+
+```
