@@ -1,3 +1,8 @@
+
+#I'm breaking this schema into 3 tables movies, reviews, people 
+#so that reviews will only populate if a review was given 
+#and it will reference the person and movie info in the other tables
+
 CREATE TABLE MOVIES (MOVIE_id bigint(20) not null auto_increment, title VARCHAR(200),
 length_minutes dec, DIRECTOR VARCHAR(1000), IMDB varCHAR(1000), YOUTUBE_TRAILER varCHAR(1000),
 unique key (MOVIE_id)
@@ -47,20 +52,13 @@ rating dec, review varCHAR(1000),
 unique key (review_id)
 );
 
-INSERT INTO reviews
-VALUES (NULL,'1','1','1','I hated it');
+
 INSERT INTO reviews
 VALUES (NULL,'1','2','1','I hated it');
-INSERT INTO reviews
-VALUES (NULL,'1','3','4','Very Good');
-INSERT INTO reviews
-VALUES (NULL,'1','4','3','OK');
 INSERT INTO reviews
 VALUES (NULL,'1','5','5','Great!');
 INSERT INTO reviews
 VALUES (NULL,'1','6','2','Too Long');
-INSERT INTO reviews
-VALUES (NULL,'2','1','3','It was fine');
 INSERT INTO reviews
 VALUES (NULL,'2','2','2','Not my cup of Tea');
 INSERT INTO reviews
@@ -72,13 +70,7 @@ VALUES (NULL,'2','5','1','Horrendous');
 INSERT INTO reviews
 VALUES (NULL,'2','6','3','It was solid');
 INSERT INTO reviews
-VALUES (NULL,'3','1','1','Terrible');
-INSERT INTO reviews
 VALUES (NULL,'3','2','3','Fine');
-INSERT INTO reviews
-VALUES (NULL,'3','3','5','Great');
-INSERT INTO reviews
-VALUES (NULL,'3','4','3','Not Bad');
 INSERT INTO reviews
 VALUES (NULL,'3','5','4','Pretty Good');
 INSERT INTO reviews
