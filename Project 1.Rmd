@@ -160,7 +160,7 @@ round((sum(b.rtg_pre) over(partition by a.player_num)/count(opponent_num) over (
                   FROM Results a join Players b on a.Opponent_Num = b.Player_num
                   join players c on c.player_num = a.player_num
                   order by a.player_num asc')
-write.csv(final_csv,"C:/Users/gerso/Documents/DATA 607/Project 1/Project 1 final dataset.csv", row.names = FALSE)
+write.csv(final_csv,"C:/Users/gerso/Documents/DATA-607/Project 1 final dataset.csv", row.names = FALSE)
 
 
 
