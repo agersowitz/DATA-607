@@ -166,4 +166,5 @@ write.csv(final_csv,"C:/Users/gerso/Documents/DATA-607/Project 1 final dataset.c
 
 ```
 
-
+## Conclusion
+After converting the data set into two tables that can be joined on player number it is a lot easier to analyze this data set. Now we can move beyond informational data gathering and determine more complex things such as the average rating of the opponents.
