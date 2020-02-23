@@ -115,7 +115,7 @@ delayed_percentage_airline,
 total_air_city_on_time_perc
 
                   FROM air a order by airline, city')
-air
+
 ```
 
 
