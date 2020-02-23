@@ -1,0 +1,123 @@
+---
+title: "DATA 607 Assignment 5"
+author: "Adam Gersowitz"
+date: "2/23/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This assignment is focused on **Tidying and Transforming** data for analysis. Prior to being transformed this data would be difficult to analyze and work with due to its format and inconsistencies.
+
+## Importing the Data
+I start by bringing in the .csv file from a github repository and making sure "air" is a dataframe. I make sure to convert all blank cells to null or "NA" values. I do this because functions such as fill will only work with "NA" cells.
+
+
+
+```{r  echo=FALSE}
+library (readr)
+library(RCurl)
+
+
+air <- read.csv('https://raw.githubusercontent.com/agersowitz/DATA-607/master/Assignment5.csv',na.strings=c("","NA"))
+
+air<-data.frame(air)
+```
+
+
+## Reshaping and Cleaning the Data
+After the data has been imported, I begin by naming the airline and flight_status columns as they were blank in the original dataset. Next I remove any lines that don't have data in them. Using the melt function I convert the dataframe from a wide format to a long format which makes it much easier to anlayze. Next, I use the fill function to pull the airlines down to the blank cells below them. Finally, I rename the auto-populated variable and value fields and clean up the City field names. Now I am ready to analyze this data set.
+
+
+```{r  echo=FALSE}
+library(tidyr)
+library(dplyr)
+library(reshape)
+air<-rename(air, c("X"="Airline", "X.1"="Flight_Status"))
+air <- air[ which(air$Flight_Status=='delayed' | air$Flight_Status=='on time'),  ]
+
+
+air <- melt(air, id=(c("Airline", "Flight_Status")))
+air<-air %>%
+    fill(Airline)
+air<-rename(air, c("variable"="City", "value"="Status_Count"))
+air$City <- gsub("\\."," ",air$City)
+#air
+```
+
+
+## Reshaping Analyzig the Data
+After I have transformed the dataset I will analyze it to determine which airlnes are themost frequently on time and if they have any problems being on time for certain destination cities. First I create an aggregate table of flight information. I then perform a chi-square test via the prop.test function and find that the airlines are significantly different in the proportion of times they are ontime with AM WEST being on time 89% of the time vs 86% for ALASKA.I also see that San Francisco is the destination city that most often has delays of flights. The worst Airline and destination combination is AM WEST and San Francisco at 71% on time. This is somewhat suprising because AM WEST is more often on time then ALASKA. This leads me to belive that the difficulty of having San Francisco as destination has caused this on time percentage to be suprisingly low and in turn has dragged AM WEST overall on time percentage down.
+
+```{r  echo=FALSE}
+
+
+
+library(sqldf)
+air <-sqldf(
+'
+SELECT distinct airline, flight_status, city, status_count, 
+sum(status_count) over (partition by airline) as total_airline_flights,
+sum(status_count) over (partition by city) as total_city_flights,
+sum(status_count) over (partition by airline, city) as total_city_airline_flights,
+(select sum(status_count) over (partition by airline) from air b where flight_status = "on time" 
+and a.airline =b.airline) as total_airline_on_time,
+(select sum(status_count) over (partition by airline) from air b where flight_status = "delayed" 
+and a.airline =b.airline) as total_airline_delayed,
+(select sum(status_count) over (partition by city) from air b where flight_status = "on time" 
+and a.city =b.city) as total_city_on_time,
+(select sum(status_count) over (partition by city) from air b where flight_status = "delayed" 
+and a.city =b.city) as total_city_delayed,
+(select sum(status_count) over (partition by city, airline) from air b where flight_status = "on time" 
+and a.city =b.city and a.airline = b.airline) as total_air_city_on_time,
+(select sum(status_count) from air b where flight_status = "on time" ) as total_on_time,
+(select sum(status_count) from air b where flight_status = "delayed" ) as total_delayed
+
+                  FROM air a order by airline, city')
+
+
+
+prop.test(table(air$total_airline_on_time, air$total_airline_flights), correct=TRUE)  
+
+air$Status_Count<-as.numeric(air$Status_Count)
+air$total_airline_flights<-as.numeric(air$total_airline_flights)
+air$total_city_flights<-as.numeric(air$total_city_flights)
+air$total_city_airline_flights<-as.numeric(air$total_city_airline_flights)
+air$total_airline_on_time<-as.numeric(air$total_airline_on_time)
+air$total_airline_delayed<-as.numeric(air$total_airline_delayed)
+air$total_city_on_time<-as.numeric(air$total_city_on_time)
+air$total_city_delayed<-as.numeric(air$total_city_delayed)
+air$status_percentage_city <- (air$Status_Count/air$total_city_airline_flights)*100
+air$ontime_percentage_city <- (air$total_city_on_time/air$total_city_flights)*100
+air$delayed_percentage_city <- (air$total_city_delayed/air$total_city_flights)*100
+air$ontime_airline <- (air$total_airline_on_time/air$total_airline_flights)*100
+air$delayed_percentage_airline <- (air$total_airline_delayed/air$total_airline_flights)*100
+air$total_air_city_on_time_perc <-(air$total_air_city_on_time/air$total_city_airline_flights)*100
+
+
+
+
+air <-sqldf(
+'
+SELECT distinct airline, flight_status, city, status_count, 
+
+status_percentage_city,
+ontime_percentage_city,
+delayed_percentage_city,
+ontime_airline,
+delayed_percentage_airline,
+total_air_city_on_time_perc
+
+                  FROM air a order by airline, city')
+air
+```
+
+
+## Conclusion
+After reshaping and analyzing this data set I have determined that AM WEST is more often on time then ALASKA airlines and that San Francisco is the destination city that most often leads to delays. To expand on this dataset it would be interesting to get the detail of each flight rather than a summary of on time and delayed flights. It would then be interesting to compare this data to external data such as time of year and weather to determine if those are having more of an impact on one ariline over another. Additionally, it would be interesting to get a more robust dataset with more cities and airlines to determine if these are outliers or if in reality they are close to each other in performance when compared with all airlines.
