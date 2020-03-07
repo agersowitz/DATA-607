@@ -1,0 +1,197 @@
+---
+title: "DATA 607 - Project 2"
+author: "Adam Gersowitz"
+date: "3/7/2020"
+output: html_document
+---
+## Overview
+
+This is a project that is focused on bringing in different datasets tidying, cleaning and analyzing them. most of these data sets are wid and need t be converted to a long format.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Dataset 1 NFL Play by Play
+
+My First dataset is from my own discussion post. This dataset contains wide formatted nfl play by play data. 
+```{r message = FALSE, warning = FALSE}
+
+library (readr)
+library(RCurl)
+
+
+x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/pbp-2019%20proj%202%20Dataset.csv")
+pbp <- read.csv(text=x)
+pbpdf <- data.frame(pbp)
+head(pbp,10)
+```
+## Dataset 1 NFL Play by Play unique play id
+
+I have created a unique identifier for each play that in conjunciton with the GameId field can be used to break this dataset into multiple dims.
+```{r message = FALSE, warning = FALSE}
+library(sqldf)
+options(sqldf.driver = "SQLite")
+pbp19 <- sqldf('select b.*, 
+row_number() over (partition by GameId order by quarter asc, minute desc, Second_Fix desc, down asc) play_id from 
+(select a.*, case when Second = 0 then 60 else Second end Second_fix from pbpdf a) b'
+) 
+
+pbp19
+```
+
+## Dataset 1 NFL Play by Play Breaking into Dims
+
+Due to the unique identifier created above I can break this data into multiple dims which removes some of the clutter such as penalties and turnovers. I also merged some of this data and did a way with some of the columns iwth boolean values.
+
+
+
+```{r message = FALSE, warning = FALSE}
+library(tidyr)
+library(dplyr)
+#pbp19
+game <- subset(pbp19, play_id == 1, select = c("GameId","GameDate","SeasonYear","OffenseTeam","DefenseTeam"))
+game_dim <- rename(game, c("OffenseTeam" = "Team1","DefenseTeam"="Team2"))
+
+play_dim <- unique(subset(pbp19,  select = c("GameId","play_id","Quarter","Minute","Second","OffenseTeam",
+                                "DefenseTeam", "Down", "ToGo","YardLineFixed","YardLineDirection")))
+
+pd <- unique(subset(pbp19, select = c("GameId","play_id","Description","SeriesFirstDown","Yards","Formation",
+                                "PlayType", "IsRush", "IsPass","IsIncomplete","IsTouchdown",
+                                "PassType","RushDirection", "IsInterception")))
+
+play_descr_dim <-sqldf("select gameid, play_id, description, seriesfirstdown, yards, formation, 
+passtype||rushdirection as direction,
+case when IsPass = 1 and IsIncomplete = 1 then 'INCOMPLETE PASS'
+WHEN ISPASS = 1 AND ISINCOMPLETE = 0 AND ISINTERCEPTION = 1 THEN 'INTERCEPTED PASS'
+WHEN ISPASS = 1 AND ISINCOMPLETE = 0 AND ISINTERCEPTION = 0 THEN 'COMPLETED PASS'
+ELSE PLAYTYPE END PLAYTYPE FROM pd")
+
+challenge_dim <- unique(subset(pbp19, IsChallenge == 1, select = c("GameId","play_id","IsChallengeReversed")))
+
+turn <- unique(subset(pbp19, IsInterception == 1|IsFumble == 1, select = c("GameId","play_id","IsInterception","IsFumble")))
+
+turnover_dim <- sqldf("select GameId,play_id, 
+                      case when IsInterception = 1 then 'INTERCEPTION' else 'FUMBLE' end Turnover
+                      from turn")
+
+penaltydim <- unique(subset(pbp19, IsPenaltyAccepted == 1, select = c("GameId","play_id","PenaltyTeam","PenaltyType","PenaltyYards")))
+
+#head(penalty_dim,50)
+```
+
+```{r message = FALSE, warning = FALSE}
+#penalty_dim
+options(sqldf.driver = "SQLite")
+most_penalized <-sqldf("  select PenaltyTeam, count(play_id) penalty_count
+                       from penaltydim group by PenaltyTeam order by count(play_id) desc")
+
+most_penalized
+
+```
+
+## Conclusions Dataset 1 NFL Play by Play
+
+I broke this data set into five dims that can be joined together on gameid and play_id. This will allow for someone using this dataset to more easily look at the data they are interested in. For example you would just need the penalty_dim table to see who the most penalized team in 2019 (see above: The Jacksonville Jaguars were the most penalized team in 2019) rather than needing to sift through all of the data in the rest of the file.
+
+
+## Dataset 2 Bob Ross Painting elements
+
+My second dataset is a listing of all of the elements in Bob Ross paintings from David Moste's discussion post.
+
+
+```{r message = FALSE, warning = FALSE}
+
+library (readr)
+library(RCurl)
+
+
+x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/Bob%20Ross%20proj2%20Dataset.csv")
+br <- read.csv(text=x)
+br <- data.frame(br)
+head(br,10)
+```
+
+## Dataset 2 Bob Ross Painting elements - pivoting the element columns into observations
+
+Here I will use the melt funciton to convert the elements to observations.
+
+```{r message = FALSE, warning = FALSE}
+
+
+library(reshape)
+library(plyr)
+bobr <- melt(br, id=c("EPISODE","TITLE"))
+Bob_Ross <- unique(subset(bobr, value == 1, select = c("EPISODE","TITLE","variable")))
+Bob_Ross <-Bob_Ross[order(Bob_Ross$EPISODE),]
+Bob_Ross <- rename(Bob_Ross, c("variable"="OBSERVATION"))
+head(Bob_Ross,25)
+
+
+```
+
+
+## Conclusions - Dataset 2 Bob Ross Painting elements 
+
+I was able to convert this data set to a longer form then it originally was which will allow for easier mainetenance and alaysis.
+
+
+
+
+
+## Dataset 3 Coronavirus Data
+
+My third dataset is a listing of reported information on the spread of teh Coronavirus from Phillip Tanofsky's discussion post.
+
+
+```{r message = FALSE, warning = FALSE}
+
+library (readr)
+library(RCurl)
+
+x <- getURL("https://raw.githubusercontent.com/CryptoKass/ncov-data/master/world.latest.bno.csv")
+cv <- read.csv(text=x)
+cv <- data.frame(cv)
+
+cv
+```
+
+
+
+## Dataset 3 Coronavirus Data - sperating the data in the notes column
+
+The notes column of this datset has a lot of usefule information but it is not formatted in a way that is easy to analyze. I will actually make this dataset a bit longer by splitting critical, serious and recovered cases into their own columns.
+
+
+```{r message = FALSE, warning = FALSE}
+library(stringr)
+
+cv$critical<-str_extract(cv$notes,pattern = "([[:digit:]])( critical)")
+cv$critical<-str_replace(cv$critical,"([[:digit:]])( critical)","\\1")
+cv$recovered<-str_extract(cv$notes,pattern = "([[:digit:]])( recovered)")
+cv$recovered<-str_replace(cv$recovered,"([[:digit:]])( recovered)","\\1")
+cv$serious<-str_extract(cv$notes,pattern = "([[:digit:]])( serious)")
+cv$serious<-str_replace(cv$serious,"([[:digit:]])( serious)","\\1")
+
+
+cv$serious<-as.numeric(cv$serious)
+cv$recovered<-as.numeric(cv$recovered)
+cv$critical<-as.numeric(cv$critical)
+
+cv<- subset(cv, select = c("country","cases","deaths", "critical","recovered","serious","links"))
+head(cv,10)
+```
+
+
+## Conclusions - Dataset 3 Coronavirus Data
+
+I was able to convert this data set to haaving a column for ciritcal, recovered and serious cases of coronavirus. By doing this I can easily calculate statistics such as percentage of cases that are critical vs recovered (see below).
+
+```{r message = FALSE, warning = FALSE}
+
+cv$per_recovered <- round((cv$recovered/cv$cases)*100,2)
+cv$per_critical <- round((cv$critical/cv$cases)*100,2)
+
+
+head(cv,10)
+```
