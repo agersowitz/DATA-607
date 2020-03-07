@@ -24,7 +24,7 @@ library(RCurl)
 x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/pbp-2019%20proj%202%20Dataset.csv")
 pbp <- read.csv(text=x)
 pbpdf <- data.frame(pbp)
-head(pbp,10)
+#head(pbp,10)
 ```
 ## Dataset 1 NFL Play by Play unique play id
 
@@ -37,7 +37,7 @@ row_number() over (partition by GameId order by quarter asc, minute desc, Second
 (select a.*, case when Second = 0 then 60 else Second end Second_fix from pbpdf a) b'
 ) 
 
-pbp19
+#pbp19
 ```
 
 ## Dataset 1 NFL Play by Play Breaking into Dims
@@ -48,8 +48,8 @@ Due to the unique identifier created above I can break this data into multiple d
 
 ```{r message = FALSE, warning = FALSE}
 library(tidyr)
-library(dplyr)
-#pbp19
+library(plyr)
+
 game <- subset(pbp19, play_id == 1, select = c("GameId","GameDate","SeasonYear","OffenseTeam","DefenseTeam"))
 game_dim <- rename(game, c("OffenseTeam" = "Team1","DefenseTeam"="Team2"))
 
@@ -109,7 +109,7 @@ library(RCurl)
 x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/Bob%20Ross%20proj2%20Dataset.csv")
 br <- read.csv(text=x)
 br <- data.frame(br)
-head(br,10)
+#head(br,10)
 ```
 
 ## Dataset 2 Bob Ross Painting elements - pivoting the element columns into observations
@@ -125,7 +125,7 @@ bobr <- melt(br, id=c("EPISODE","TITLE"))
 Bob_Ross <- unique(subset(bobr, value == 1, select = c("EPISODE","TITLE","variable")))
 Bob_Ross <-Bob_Ross[order(Bob_Ross$EPISODE),]
 Bob_Ross <- rename(Bob_Ross, c("variable"="OBSERVATION"))
-head(Bob_Ross,25)
+head(Bob_Ross,10)
 
 
 ```
@@ -153,7 +153,7 @@ x <- getURL("https://raw.githubusercontent.com/CryptoKass/ncov-data/master/world
 cv <- read.csv(text=x)
 cv <- data.frame(cv)
 
-cv
+#cv
 ```
 
 
