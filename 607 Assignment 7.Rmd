@@ -1,0 +1,66 @@
+---
+title: "DATA 607 - Assignment 7"
+author: "Adam Gersowitz"
+date: "3/9/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Overview
+
+Assignment 7 will be focused on importing html,xml, and json tables into R and noting the differences between the 3 structures.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+
+library(XML)
+library(httr)
+library(RCurl)
+library(rvest)
+library(rjson)
+library(jsonlite)
+library(tibble)
+library(tidyr)
+library(reshape)
+
+xmlURL <- "https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/books.xml"
+xmldata = getURL(xmlURL)
+booksxml<- xmlToDataFrame(xmldata)
+booksxml<- data.frame(booksxml)
+
+
+htmlURL <- "https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/books.html"
+htmlURL <- getURL(htmlURL)
+#bookshtml <- htmlParse(xmldata)
+bookshtml<- readHTMLTable(htmlURL,
+                      stringsAsFactors = FALSE)
+bookshtml<-data.frame(bookshtml)
+#bookshtml_csv<-write.csv(bookshtml)
+
+
+jsonURL <- "https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/books.json"
+jsondata = getURL(jsonURL)
+jsonbooks <- fromJSON(jsondata)
+booksjson<-data.frame(jsonbooks)
+
+#json_raw <- enframe(unlist(jsonbooks))
+#booksjson <- separate(json_raw, into = c(paste0("x", 1:10)))
+
+
+
+#booksxml
+#bookshtml
+#booksjson
+
+```
+
+## Conclusions
+
+I found that html, xml, and json all had unique challenges when loading them into a dataframe. I leaned heavily on Gaston Sanchez's slide deck as well as online resources like this tutorial (https://www.datacamp.com/community/tutorials/r-data-import-tutorial#data). I was able to create all three files and bring them into a data frame. This was a very good exercise for me,, because I have not used these formats extensivbely in the past so it is good to get practice with them due to their widespread use.
+
