@@ -1,0 +1,62 @@
+---
+title: "Data 607 Assignment 9"
+author: "Adam Gersowitz"
+date: "3/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this assignment I will be using the New York Times API that I signed up for in order to download some of their information on best selling books into an r dataframe. I chose to look for fiction books that are currently on the New York Times fiction best seller list. First I found the appropriate name for this list which is "combined-print-fiction."
+
+```{r}
+library(httr)
+library(jsonlite)
+library(keyring)
+
+
+#keyring::key_set(service = "my-database", 
+#                 username = "mypassword")
+
+
+
+
+
+api = keyring::key_get("my-database", "mypassword")
+
+rn <- GET(paste("https://api.nytimes.com/svc/books/v3/lists/names.json?api-key=",api,sep=""))
+rnbin<-(content(rn, "raw"))
+writeBin(rnbin, "nytnames.txt")
+nyt_names <- jsonlite::fromJSON("nytnames.txt")
+
+
+
+
+url<-paste("https://api.nytimes.com/svc/books/v3/lists/combined-print-fiction.json?api-key=",api,sep="")
+
+rf <- GET(url)
+rfbin<-(content(rf, "raw"))
+writeBin(rfbin, "nytfiction.txt")
+nytf <- jsonlite::fromJSON("nytfiction.txt", simplifyDataFrame = TRUE)
+
+
+nyt_fiction<-as.data.frame(nytf$results$books)
+class(nyt_fiction)
+#nyt_fiction
+
+
+
+```
+
+## Conclusion
+
+I was successfully able to create a data frame base on the New York Times Combined Fiction list.Going forward I would want to iterate through more pages to get more results.
+
+
+
+
+
