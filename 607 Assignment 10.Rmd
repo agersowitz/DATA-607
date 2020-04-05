@@ -1,0 +1,193 @@
+---
+title: "607 Assignment 10"
+author: "Adam Gersowitz"
+date: "4/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this weeks assignment we are tasked with expanding on a sentiment analysis found in Text Mining with R, Chapter 2. We will do this by expanding on existing code by introducing a new corpus and an additional sentiment lexicon that is not found in the book. All base code originated in Text Mining with R: https://www.tidytextmining.com/sentiment.html
+
+The code below is found in Text Mining with R 
+
+
+```{r}
+#install.packages("textdata")
+library(tidytext)
+
+#get_sentiments("afinn")
+#get_sentiments("bing")
+#get_sentiments("nrc")
+
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                                                 ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+
+library(tidyr)
+
+jane_austen_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+library(ggplot2)
+
+ggplot(jane_austen_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+## Acquiring Twitter Data
+
+In the code chunk below I use the rtweet package to obtain 200 tweets about coronavirus from 4 different major american cities(New York City, Dallas, Chicago, Los Angeles).
+
+```{r}
+#install.packages("vader")
+library(vader)
+library(sqldf)
+library(rtweet)
+library(dplyr)
+library(plyr)
+library(ggplot2)
+ 
+
+city <- data.frame("city" = c("New York City","Dallas","Chicago", "Los Angeles"),
+                   "lat" = c("40.7484,","32.7767,","41.8781,", "34.0522,"),
+                   "long" =  c("-73.9857,","-96.7970,","-87.6298,", "-118.2437,"))
+
+
+
+ctdf<-data.frame("city","search_term","text","created_at")
+colnames(ctdf) <- c("city","search_term","text","created_at")
+#ctdf$created_at<-as.Date.factor(ctdf$created_at)
+
+
+for(i in 1:nrow(city)) {
+corona <-as.data.frame(search_tweets(
+  "corona OR coronavirus or Corona OR Coronavirus OR CORONA OR CORONAVIRUS",
+  n = 100,
+  type = "recent",
+  include_rts = TRUE,
+  geocode = paste(city$lat[i],city$long[i],"25mi",sep = ""),
+  max_id = NULL,
+  parse = TRUE,
+  token = NULL,
+  retryonratelimit = FALSE,
+  verbose = TRUE
+))
+corona$city=city$city[i]
+corona$search_term="Corona"
+corona <- corona %>%  
+    mutate(created_at = as.factor(created_at))
+corona<-select(corona,city,search_term, text, created_at)
+
+covid <-as.data.frame(search_tweets(
+  "COVID OR covid OR Covid",
+  n = 100,
+  type = "recent",
+  include_rts = TRUE,
+  geocode = paste(city$lat[i],city$long[i],"25mi",sep = ""),
+  max_id = NULL,
+  parse = TRUE,
+  token = NULL,
+  retryonratelimit = FALSE,
+  verbose = TRUE
+))
+
+covid$city=city$city[i]
+covid$search_term="COVID"
+covid <- covid %>%  
+    mutate(created_at = as.factor(created_at))
+covid<-select(covid,city,search_term, text, created_at)
+
+co_tweets <- union(co_tweets,corona,covid)
+}
+
+
+co_tweets<-unique(co_tweets)
+
+head(co_tweets,100)
+
+#getVader(text, incl_nt = T, neu_set = T)
+
+
+#install.packages("gdata")
+
+
+```
+
+
+## Using VADER to determine sentiment analysis
+
+In thi scode chunk I use the vader package to determine the difference in sentiment across these 4 cities.VADER (Valence Aware Dictionary and sEntiment Reasoner) is a lexicon and rule-based sentiment analysis tool that is specifically attuned to sentiments expressed in social media. (https://medium.com/analytics-vidhya/simplifying-social-media-sentiment-analysis-using-vader-in-python-f9e6ec6fc52f)
+
+I extract the numeric value for the compound score which rates the sentiment of the tweet and bind that data to the existing data frame.
+
+```{r}
+
+comp<- c()
+for(i in 1:nrow(co_tweets)) {
+  gv<-getVader(co_tweets$text[i], incl_nt = T, neu_set = T)
+  rownum<-i
+  compound<-lgv-4
+  cp<-gv[compound]
+  comp<-c(comp,cp)
+
+}
+
+
+#gv<-getVader(co_tweets$text[1], incl_nt = T, neu_set = T)
+
+#gv
+co_tweets<-rbind(co_tweets, comp)
+
+head(co_tweets,10)
+
+library(ggplot2)
+
+co_tweets_aggr<-aggregate(co_tweets[, 5], list(co_tweets$city), mean)
+co_tweets_aggr
+
+ 
+
+ggplot(co_tweets_aggr, aes(y=x, x=Group.1)) + 
+    geom_bar(position="dodge", stat="identity") +
+  ggtitle("Average VADER valence score") +
+  xlab("City") + ylab("Avereage Score")
+
+
+```
+
+
+
+## Conclusion
+
+Unsuprisingly all of the selected cities have a decidadely negative sentiment when discussing COVID-19. Somewhate suprising is the fact NBew York City seems to have the least negative (or most positive) sentiment. This could be due to a very limited sample size and would have to be re-evaluated.
+
+
+
+
+
+
