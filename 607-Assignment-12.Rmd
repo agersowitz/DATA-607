@@ -1,0 +1,56 @@
+---
+title: "Assignment 12: Recommender Systems"
+author: "Adam Gersowitz"
+date: "4/14/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Spotify Recommender System
+
+Spotify is the biggest name in the streaming music world. One of the best features in spotify is the discover weekly playlist where spotify will recommend a playlist of songs based on your listening habits.Specifically Spotify will make suggestions based on historical interactions such as listens, skips and adding a song to a playlist.
+
+
+
+## Scenario Design Analysis
+
+1) The target users for Spotify are anyone who currently uses spotify. For this reccommender sytems specifically it only applies to spotify users because it presents information base on a users history. 
+
+2) The key goals of the discover weekly playlist are successfully giving users more music that they will enjoy, keeping users interested in using spotify in part because of this feature, and using how a user responds to these suggestions to better fine-tune their system.
+
+3) Features like discover weekly help maintain users because of its ability to excite the user and convince them that they should keep on using Spotify. By offering a more immersive experience Spotify can increase the amount of times user listen to music which will either lead to more ads being heard or potentially a user paying for an account to skip ads.
+
+## Reverse Engineer
+
+Other music streaming services us manual tagging to categorize songs. Spotify uses deep learning to automate the process. This allows them to idnetify patterns between artists, genres, and user preferences. There are 3 recommender models being used at Spotify:
+
+
+## Collaborative Filtering
+
+Spotify uses the behavior of the user and the behavior of similar users.It uses the "nearest neighbors" to make predictions about what others will enjoy. This is similar to how Netflix operates, but also utilizes implicit feedback symbols like stream counts and skip counts to inform decisions. 
+
+Spotify creates a profile of each user based on their listening habist and then uses this profile to create the Discover Weekly Playlist. It then creates a list of 30 songs that the user has not listened to and sorts them based on the liklihood that the user will like them.
+
+This also helps incentivize artists to use spotify as a platform. If Spotify wasn't actively suggesting songs that the user has never listened to it is far more unlikely that users would ever stray from the artists they know that they like. In the case of most users this would mean that only popular songs would get a siignificant amount of listens.
+
+## Natural Language Processing (NLP)
+
+Spotify uses NLP to turn playlists into text files to analyze who lyrics are consistent across songs and genres. This analysis allows Spotify to infer adjectives asssociated with song lyrics.This allows Spotify to make song and artist reccomendations based on adjectives which allows for reccommendations to cut across genre.
+
+## Audio Models
+
+Spotify uses a neural netowrk to analyze audio files of newly uploaded songs to lead to an even more diverse set of reccomendations. Even with the methods stated above it may be difficult for largely unknown songs and artists to find their way onto a Discover Weekly playlist. They then reccomend songs to users based on similarities in these neural networks. This also incentivizes artists to start working with Spotify if they know that Spotify will be using these systems to reccommend heir songs to new fans.
+
+
+
+## Improving Recommendations
+
+Spotify seems to have an extremely advanced set of systems to inform their song and artist recommendations. I would look into how users respond to each type of reccomendation style outlined above. If the user responds postively to reccomendations that are heavily based on audio file neural network analysis I would focus more on sending that user recommendations that arise from that type of model. The same goes for any of the other types of systems. 
+
+
+## References
+
+https://towardsdatascience.com/how-spotify-recommends-your-new-favorite-artist-8c1850512af0
