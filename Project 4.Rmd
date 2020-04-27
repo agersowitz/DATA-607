@@ -1,0 +1,136 @@
+---
+title: "Project 4"
+author: "Adam Gersowitz"
+date: "4/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In Project 4 we were tasked with creating a documentation classification filter that would act as a spam filter. I took spam and non-spam (ham) emails from https://spamassassin.apache.org/old/publiccorpus/. 
+
+## Data Collection
+
+First I created a few for loops that would reference the local directory to download the text files associated with ham and spam emails.
+```{r }
+
+library(readr)
+
+ham_directory <- "C:/Users/gerso/Documents/DATA-607/Project 4/20030228_easy_ham_2.tar/20030228_easy_ham_2/easy_ham_2"
+ham_list <- list.files(ham_directory)
+
+h = data.frame()
+
+for (f in ham_list){
+  fl<-paste(ham_directory,'/',f,sep="")
+  x <- data.frame(read_file(fl))
+  h<-rbind(h,x)
+}
+
+spam_directory <- "C:/Users/gerso/Documents/DATA-607/Project 4/20050311_spam_2.tar/20050311_spam_2/spam_2"
+spam_list <- list.files(spam_directory)
+
+s<-data.frame()
+
+for (f in spam_list){
+  sl<-paste(spam_directory,'/',f,sep="")
+  x <- data.frame(read_file(sl))
+  s<-rbind(s,x)
+}
+
+```
+
+## Data Analysis
+
+After getting the data inro data frames I randomized the data frame so that I wouldn't split the data frame and get all spam or all ham in a set of data. I then converted the "Msg" data into a corpus and cleaned the corpus of things like white space and punctuation usinf the tm package. I then used a random forest analysis and the caret package to perform a prediction of which emails in the test dataset would be ham vs spam emails. I relied heavily on online research and used snippets of code from the following sources:
+
+https://towardsdatascience.com/random-forest-text-classification-trump-v-obama-c09f947173dc
+
+https://towardsdatascience.com/sms-text-classification-a51defc2361c
+
+```{r analysis}
+
+
+library(tm)
+library(sqldf)
+library(randomForest)
+library(caTools)
+library(e1071)
+library(caret) 
+library(gmodels)
+colnames(h) <- c( "Msg")
+colnames(s) <- c( "Msg")
+
+h<-sqldf("select '0' as type, Msg from h")
+s<-sqldf("select '1' as type, Msg from s")
+
+
+
+hs<-rbind(h,s)
+
+hs$Msg<-sub("Message-Id.*", "", hs$Msg)
+
+
+
+set.seed(99)
+rows <- sample(nrow(hs))
+hs <- hs[rows, ]
+
+
+hamcorpus = Corpus(VectorSource(hs$Msg))
+hamcorpus<-tm_map(hamcorpus, content_transformer(function(x) iconv(enc2utf8(x), sub = "byte")))
+
+
+
+hamcorpus <- tm_map(hamcorpus, content_transformer(tolower))
+hamcorpus <- tm_map(hamcorpus, removeNumbers)
+hamcorpus <- tm_map(hamcorpus, removePunctuation)
+hamcorpus <- tm_map(hamcorpus, removeWords, stopwords())
+hamcorpus <- tm_map(hamcorpus, stemDocument)
+hamcorpus <- tm_map(hamcorpus, stripWhitespace)
+
+
+dtm <- DocumentTermMatrix(hamcorpus)
+dtm <- removeSparseTerms(dtm, 0.9)
+
+data <- as.data.frame(as.matrix(dtm))
+data$type <- hs$type
+
+set.seed(1234)
+split <- sample.split(data$type, SplitRatio = 0.75)
+training_set <- subset(data, split == TRUE)
+test_set <- subset(data, split == FALSE)
+
+ts<-as.data.frame(test_set)
+
+classifier <- randomForest(x = training_set[-250], 
+                           y = as.factor(training_set$type),
+                           nTree = 10)
+
+y <- predict(classifier, newdata = test_set[-250])
+
+
+pred<-as.data.frame(y)
+pred$type<-ts$type
+
+
+tableset<-sqldf("select y,type,case when y = 1 then 'Spam Prediction' else 'Ham Prediction' end pred,
+                case when type = 1 then 'Spam Actual' else 'Ham Actual' end actual
+                from pred")
+
+table<-table(tableset$pred,tableset$actual)
+
+table
+
+```
+
+## Conclusion
+
+My documentation prediction spam folder had one false positive prediction and did not miss any actual spam emails. To further this analysis I would introduce a dataset that would be external to the dataset I used to create the test and training data frames. This would allow for more robust testing of the effectiveness of this model.
+
+
+
