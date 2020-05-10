@@ -1,0 +1,280 @@
+---
+title: 'Final Project: Happiness and the Economy'
+author: "Adam Gersowitz"
+date: "5/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Recently, there has been extensive debates about “opening” the economy from COVID-19 related quarantine in order to improve the lives of American citizens. However, most polling figures show that a strong majority of Americans are not in favor of re-opening the economy. I will examine how different economic factors truly impact the happiness of everyday people.
+
+First I will examine the 2016 World Happiness Report. The World Happiness Report uses a ladder of 1-10 to poll citizens about the satisfaction they have with their lives. Additionally, there are six factors (economic production, social support, life expectancy, freedom, absence of corruption, and generosity) in the data set used to estimate the extent they impact overall happiness in a country. They World Happiness Report uses GDP per capita to estimate how a countries economy has an impact on the happiness of its citizens.
+
+I’m going to drill down into the economic production category of the World Happiness Report to determine if there are more detailed parts of a thriving economy that lead to happiness. I will do this by using the Economic Freedom Index and wealth distribution and inequality measures. The Economic Freedom Index track national advancements in economic freedom, prosperity, and opportunity. While wealth inequality measures, such as the gini coefficient, help measure potential gaps in a countries wealthiest and poorest individuals.
+
+
+
+## Datasets
+
+https://www.kaggle.com/unsdsn/world-happiness#2017.csv
+
+https://www.kaggle.com/lewisduncan93/the-economic-freedom-index
+
+https://www.gfmag.com/global-data/economic-data/wealth-distribution-income-inequality
+
+
+## R Libraries Used
+
+```{r libraries, echo = TRUE,  message = FALSE,warning = FALSE}
+
+library(readr)
+library(RCurl)
+library(jsonlite)
+library(tidyverse)
+library(rvest)
+library(xml2)
+library(stringr)
+library(magrittr)
+library(plyr)
+library(ggplot2)
+library(ggmap)
+library(maps)
+library(mapdata)
+library(plotly)
+library(rworldmap)
+library(sqldf)
+```
+
+
+## Importing and Cleaning Data
+
+In the code below I will import data from the World Happiness Report, Economic Freedom Index, and from an article which holds high level wealth distribution measures. The World Happiness Report and the Economic Freedom Index were downloaded from Kaggle.com and then saved in my github repository. The articles wealth distribution measures were webscraped from the article listed in the Datasets section above.
+
+After importing the data I clean the data so it can be joined. I then create 3 dataframes: efihappy (economic feedom index joined to happiness report), wealthhappy (wealth inequality article table joined to happiness report), full (all three dataframes joined). I wanted to have three datasets because not every country was represented in each dataset. When analyzing just economic freedom fields I didn't want to join the wealth dataframe which would drop some countries and visa versa.
+
+
+```{r data, echo = TRUE,  message = FALSE,warning = FALSE}
+#webscrape wealth distribution and income inequality measures from #https://www.gfmag.com/global-data/economic-data/wealth-distribution-income-inequality
+
+url <- "https://www.gfmag.com/global-data/economic-data/wealth-distribution-income-inequality"
+page <- xml2::read_html(url)
+
+
+#extract all text from td html_node where table info resides
+data <- page %>% html_nodes('td') %>% 
+                      html_text() 
+
+#Data Cleaning to remove formatting issues and additional text clutter from html_text
+data<- gsub("\r\n\t\t\t","", data)
+data<- gsub(",","", data)
+data<- gsub("N/A","", data)
+
+#Convert character vector to dataframe by converting it to a matrix by every 8 columns
+wealth<-as.data.frame(matrix(data, ncol = 8,  byrow = TRUE), stringsAsFactors = FALSE)
+
+
+#Rename wealth dataframe to make columns descriptive
+wealth <- plyr::rename(wealth, c(V1 = "Country",
+    V2 = "Net_Income_Gini_Index",
+    V3 = "Wealth_Gini_Index",
+    V4 = "GDP_Per_Capita",
+    V5 = "Employment_Rate",
+    V6 = "Median_Daily_Income",
+    V7 = "Poverty_Rate",
+    V8 = "Life_Expectancy"))
+
+#convert wealth columns to mumeric values so they may be used in future analysis.
+wealth[,2:8]<-sapply(wealth[,2:8], as.numeric)
+
+#Importing the 2017 world happiness report index from .csv saved on github
+
+x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/2017%20(1).csv")
+happy <- as.data.frame(read.csv(text=x))
+
+x <- getURL("https://raw.githubusercontent.com/agersowitz/Data-607-Datasets/master/economic_freedom_index2019_data%20(1).csv")
+efi <- as.data.frame(read.csv(text=x))
+
+#Cleaning names on the happiness index so it can be joined to the other datasets
+wealth$Country <- as.character(wealth$Country)
+wealth$Country[wealth$Country == "Korea South"] <- "South Korea"
+wealth$Country[wealth$Country == "Russian Federation"] <- "Russia"
+wealth$Country[wealth$Country == "Lao PDR"] <- "Laos"
+wealth$Country[wealth$Country == "Macedonia FYR"] <- "Macedonia"
+wealth$Country[wealth$Country == "Slovak Republic"] <- "Slovakia"
+
+
+#Merging our 3 dataframes so that they can be easily analyzed side by side.
+
+efihappy<-merge(efi,happy, by.x="Country.Name", by.y = "Country")
+wealthhappy<-merge(x=happy,y=wealth, by ="Country")
+
+#converting numeric values from the Economic Health Index so they can be analyzed later.
+efihappy[,8:37]<-sapply(efihappy[,8:37], as.numeric)
+
+
+full<-merge(efihappy, wealth, by.x = "Country.Name", by.y = "Country")
+
+```
+
+
+## Exploratory Analysis
+
+In the following section I wanted to display a quick graphical representation of which countries are the happiest and which countries have the highest GDP (PPP) to see which happy countries don't have a high GDP. The maps below show that North America, South America, Western Europe and Australia tend to have the highest happiness scores.with Africa and Asia trailing behind. We can also see that South America tends to have a high happiness score with a low GDP so this region may be worth looking at more closely.
+
+```{r data anlaysis, , echo = TRUE,  message = FALSE,warning = FALSE}
+
+Map <- joinCountryData2Map(happy,joinCode = "NAME",
+  nameJoinColumn = "Country")
+
+mapCountryData(Map, nameColumnToPlot="Happiness.Score", catMethod = "numeric",
+  missingCountryCol = gray(.8))
+
+Map2 <- joinCountryData2Map(efihappy,joinCode = "NAME",
+  nameJoinColumn = "Country.Name")
+
+mapCountryData(Map2, nameColumnToPlot="GDP.per.Capita..PPP.", catMethod = "numeric",
+  missingCountryCol = gray(.8))
+
+```
+
+
+
+## Statistical Analysis
+
+The Happiness index uses a countries GDP to estimate the economy's impact on a citizens happiness. This seems like a broad indicator that could be drilled down into via more detailed economic data. I will use a multiple regression model to analyze which variables have a significant impact on a countries happiness score.
+
+## Wealth Distribution Indicators
+
+First I will look at all indicators that were included in the article on wealth distribution. We can see that only 2 variables, median daily income and poverty rate have a statistically significant impact on a countries happiness score (p-value < .1).
+
+R-Squared is a statisitcal measure that shows what proportion of the variance in the dependent variable (Hapiness Score) can be explained by the variables in a regression model.We see both a Multiple R-Squared Value and an adjusted R-Squared Value in the output. Multiple R-Squared shows the the R-squared proprtion without taking into account how many variables are in the model. By just using this figure a model can end up overfitted to the data which will make the model less useful when extrapolating. Adjusted R-Squared shows the R-Squared proportion while also taking into account the number of variables in the model and will favor models with fewer predictors.
+
+
+We find that the adjusted r-squared for the more refined model below is 0.7074. This is only .0292 less than the adjusted r-squared for the model that has all of the wealth distribution indicators. We will attempt to find a relatively simple model that can significantly beat this adjusted r-squared score.
+
+
+```{r wealth MR, , echo = TRUE,  message = FALSE,warning = FALSE}
+
+wealth_lm <- lm(Happiness.Score ~ Net_Income_Gini_Index + Wealth_Gini_Index + GDP_Per_Capita +Employment_Rate + Median_Daily_Income+ Poverty_Rate, data = wealthhappy)
+summary(wealth_lm)
+
+welath2_lm <- lm(Happiness.Score ~ Median_Daily_Income+ Poverty_Rate, data = wealthhappy)
+summary(welath2_lm)
+```
+
+
+## Economic Freedom Index
+
+Next we will look at varialbes form the Economic Freedom Index to determine their validity in predicting a country's Happiness Score. We see that 6 variables have a statistically singificant impact on the Happiness Score. The Variables are: Property Rights, Judicial Effectiveness, Labor Freedom, Trade Freedom, GDP Growth Rate and GDP Per Capita. Suprisingly, Labor Freedom and GDP Growth rate are negatively correlated with Happiness Score.
+
+We find the adjusted R-Squared for the more refined model below is  0.5915. Which is less than the models above.
+
+
+```{r efi MR, echo = TRUE,  message = FALSE,warning = FALSE}
+
+efi_lm <- lm(Happiness.Score ~ Property.Rights+ Judical.Effectiveness+ Government.Integrity + Tax.Burden+                    +Gov.t.Spending+Fiscal.Health+Business.Freedom+Labor.Freedom+Monetary.Freedom+Trade.Freedom+Investment.Freedom+Financial.Freedom+Tariff.Rate....+Income.Tax.Rate....+Corporate.Tax.Rate....+Tax.Burden...of.GDP+Gov.t.Expenditure...of.GDP+Country+Population..Millions.+GDP..Billions..PPP.+GDP.Growth.Rate....+X5.Year.GDP.Growth.Rate....+GDP.per.Capita..PPP.+Unemployment....+Inflation....+FDI.Inflow..Millions.+Public.Debt....of.GDP., data = efihappy)
+summary(efi_lm)
+
+efi2_lm <- lm(Happiness.Score ~ Property.Rights+Business.Freedom+Labor.Freedom+Trade.Freedom+GDP.Growth.Rate....+GDP.per.Capita..PPP., data = efihappy)
+summary(efi2_lm)
+```
+
+
+## All Economic Indicators
+
+Finally, I want to include variables form both the wealth distribution dataframe and the economic freedom index dataframe in a model. Adding more variables to a multiple regression model improves the fit of the model and also impacts the estimates associated with other variables. In this section I combine the 6 variables from the efihappy and the 2 variables fromt the wealthhappy dataframes that were determined to have a statistically significant impact on Happiness Score.
+
+We see that the only 2 factors from either of these datasets to have a significant impact on Happiness Score to be Poverty Rate and Median Daily Income. These 2 variables offer a simple multiple regression model that has a relatively hish adjusted r-squared value for its simplicity. We also find that there is a low estimated impact on the happiness score it is clear that non-economic factors have a large roll in happiness score. These other factors may be colinear with poverty rate and median daily income.
+
+
+```{r full MR, echo = TRUE,  message = FALSE,warning = FALSE}
+
+full_lm <- lm(Happiness.Score ~ Median_Daily_Income+ Poverty_Rate + Property.Rights +Business.Freedom+ Labor.Freedom+ Trade.Freedom+ GDP.Growth.Rate....+GDP.per.Capita..PPP., data = full)
+summary(full_lm)
+
+full2_lm <- lm(Happiness.Score ~ Median_Daily_Income+ Poverty_Rate, data = full)
+summary(full2_lm)
+```
+
+## Conditions for Multiple Regression Analysis
+
+
+The main conditons that need to be met to proceed with multiple regression analysis are that:
+
+-There is a linear relationship between the dependent and independent variables
+-Residuals are normally distributed
+-Independent Variables are not highly correlated
+-Variance of residuals are similar accross independent varialbles
+
+By using the functions below we find that are model meets the conditions above. The histogram demonstrates the nearly normal distribution of the residuals. The line plot shows the redisual variance is relatively consistent. The low VIF scores show that there is no multicollinearity betwen our variables and we know from previsous analysis that the variables are linearily related to the happiness score.
+
+With these assumptions satisfied we can proceed.
+
+```{r condiitons, echo = TRUE,  message = FALSE,warning = FALSE}
+qqnorm(full2_lm$residuals)
+qqline(full2_lm$residuals)
+hist(full2_lm$residuals)
+car::vif(full2_lm)
+
+
+```
+
+
+## Visualizing the Results
+
+I want to demonstrate how the two statistically significant indicators impact the Happiness Score when compared to GDP Per Capita. In the 3 graphs belwo we can see the correlations are much stronger for Poverty Rate and Median Daily Income then GDP Per Capita. WE see GDP per Capita has a slightly postive correlation while Poverty Rate has a strong negative correlation and Median Daily Income has a strong positive correlation.
+
+```{r plots, echo = TRUE,  message = FALSE,warning = FALSE}
+
+
+plot(efihappy$GDP.per.Capita..PPP.,efihappy$Happiness.Score)
+abline(lm(efihappy$Happiness.Score~efihappy$GDP.per.Capita..PPP.))
+
+pl<-plot(wealthhappy$Median_Daily_Income,wealthhappy$Happiness.Score)
+abline(lm(wealthhappy$Happiness.Score~wealthhappy$Median_Daily_Income))
+
+pl<-plot(wealthhappy$Poverty_Rate,wealthhappy$Happiness.Score)
+abline(lm(wealthhappy$Happiness.Score~wealthhappy$Poverty_Rate))
+
+```
+
+
+## Visualizing the Results vs Real GDP
+
+We can see in the plots below that GDP seems to only impact happiness once a country has reached a minimum in both Poverty Rate and Median Daily Income. This makes sense that people need the necessities to improve their happiness before the wealth of the country as a whole will impact their happiness.
+
+If we look at the Americas as an interest group with high happiness scores and relatively low GDP we see that they have low poverty rates and relatively high daily median income. The Daily Median Income for most South and Central American countries are at the inflection point where median daily income begins to flatten out in relation to happiness.
+
+We also see that South and Central American countries tend to have low poverty rates when compared to other regions that share their level of GDP per capita (Sub-Sahran Africa). Countries in the Americas tend to have much lower poverty rates and much higher daily median income than their counterparts in Africa.
+
+
+```{r plots2, echo = TRUE,  message = FALSE,warning = FALSE}
+
+
+pfl<-ggplot(full, aes(full$Median_Daily_Income,full$Happiness.Score)) + geom_point()+ geom_smooth()
+pf<-ggplot(full, aes(full$Median_Daily_Income,full$Happiness.Score,colour = full$GDP_Per_Capita, shape = full$Region, text = Country.Name)) + geom_point() + scale_colour_gradient(low = "red",high = "green")+
+  theme(legend.position="bottom")
+ggplotly(pf+labs(x="Median Daily Income(USD)",y="Happines Score", title = "National Happiness and Median Daily Income", colour =  "GDP Billions USD", shape = "Region" ), tooltip = "text")
+pfl+labs(x="Median Daily Income(USD)",y="Happines Score", title = "National Happiness and Median Daily Income(USD)") 
+
+
+pfl<-ggplot(full, aes(full$Poverty_Rate,full$Happiness.Score)) + geom_point()+ geom_smooth()
+pf<-ggplot(full, aes(full$Poverty_Rate,full$Happiness.Score,colour = full$GDP_Per_Capita, shape = full$Region, text = Country.Name)) + geom_point() + scale_colour_gradient(low = "red",high = "green")
+ggplotly(pf+labs(x="Poverty Rate %",y="Happines Score", title = "National Happiness and Poverty Rate %", colour =  "GDP Billions USD", shape = "Region" ), tooltip = "text")
+pfl+labs(x="Poverty Rate %",y="Happines Score", title = "National Happiness and Poverty Rate %)") 
+```
+
+
+
+## Conclusion
+
+We can see based on the visualizations and analysis above that GDP per Capita is not a very informative indicator of hapiness accross all countries. It seems to have more of an impact on happiness when a country has met thresholds for poverty rate and median daily income. However, for most countries in the world, median daily income and poverty rate are much better economic indicators of happiness then GDP per Capita.
+
+
+It is not revolutionary to say people who are not living in poverty and recieve a relatively high median daily income will be happier than those who do not have those things.It does however, support the idea that the collective wealth of a country only has a limited wealth of the happiness of it's citizens. Additonally, with such a low estimated impact on the happiness score it is clear that non-economic factors have a much higher impact on the happiness score.
+
